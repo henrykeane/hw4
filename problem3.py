@@ -29,8 +29,8 @@ def image_to_column_sequence(x: torch.Tensor) -> torch.Tensor:
     seq : torch.Tensor, shape (B,32,96)
       timestep t corresponds to column t of the image, flattened across (C,H).
     """
-    # TODO
-    raise NotImplementedError
+    B, C, H, W = x.shape
+    return x.permute(0, 3, 1, 2).reshape(B, W, C * H)
 
 
 class ColumnRNN(nn.Module):
@@ -52,8 +52,15 @@ class ColumnRNN(nn.Module):
         dropout_p: float = 0.0,
     ):
         super().__init__()
-        # TODO
-        raise NotImplementedError
+        if rnn_type == "rnn":
+            self.rnn = nn.RNN(input_size=96, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout_p, batch_first=True)
+        elif rnn_type == "gru":
+            self.rnn = nn.GRU(input_size=96, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout_p, batch_first=True)
+        elif rnn_type == "lstm":
+            self.rnn = nn.LSTM(input_size=96, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout_p, batch_first=True)
+        else:
+            raise ValueError(f"Unknown RNN type: {rnn_type}")
+        self.fc = nn.Linear(hidden_size, 10)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -62,8 +69,12 @@ class ColumnRNN(nn.Module):
           - sequences: (B,32,96)
         Return logits: (B,10)
         """
-        # TODO
-        raise NotImplementedError
+        if x.dim() == 4:
+            x = image_to_column_sequence(x)
+        out, _ = self.rnn(x)
+        out = out[:, -1, :]
+        out = self.fc(out)
+        return out
 
 
 if __name__ == "__main__":
